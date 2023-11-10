@@ -1,53 +1,91 @@
 package bot
 
+import constants.BotConstants
+import extension.BotExtension.sendMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import order.TalkBotOrder
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException
-
+import kotlin.random.Random
 
 class TalkBot : TelegramLongPollingBot() {
 
+    private val orderSet = TalkBotOrder.entries
+
     override fun getBotUsername(): String {
-        return ""
+        return BotConstants.BOT_NAME
     }
 
     override fun getBotToken(): String {
-        return ""
+        return BotConstants.BOT_TOKEN
     }
 
     override fun onUpdateReceived(update: Update) {
         GlobalScope.launch(Dispatchers.IO) {
-            System.out.println("${update.message}")
             if (update.hasMessage() && update.message.hasText()) {
-                if (update.message.isSuperGroupMessage || update.message.isGroupMessage
-                        || update.message.isChannelMessage
-                ) {
-                    System.out.println("${update.message.chat.type}")
-                    return@launch
-                }
-                val message = SendMessage() // Create a SendMessage object with mandatory fields
-                message.chatId = update.message.chatId.toString()
+                when (update.message.chat.type) {
+                    "private" -> {
+                        privateMessageReply(update)
+                    }
 
-                val result = update.message.text
-                        .replace("@functionzzbot", "")
-                        .replace("你", "_Wo_")
-                        .replace("我", "你")
-                        .replace("_Wo_", "我")
-                        .replace("吗", "")
-                        .replace("吧", "")
-                        .replace("？", "")
+                    "group", "supergroup" -> {
+                        groupMessageReply(update)
+                    }
 
-                message.text = result
-                try {
-                    execute(message) // Call method to send the message
-                } catch (e: TelegramApiException) {
-                    e.printStackTrace()
+                    "channel" -> {
+
+                    }
                 }
+
             }
         }
+    }
+
+    private suspend fun groupMessageReply(update: Update) {
+        System.out.println("groupMessageReply: ${update.message}")
+        update.message.text?.let { content ->
+            if (content.contains("@$botUsername")) {
+                // /random@name
+                if (content.startsWith("/")) {
+                    orderSet.forEach {
+                        if (content.startsWith(it.value)) {
+                            when (it) {
+                                TalkBotOrder.RANDOM -> {
+                                    sendMessage(update.message.chatId.toString(),"random ${Random.nextInt(100)}")
+                                }
+
+                                TalkBotOrder.JOKE -> {
+                                    sendMessage(update.message.chatId.toString(),"还没编好")
+                                }
+                            }
+
+                            return@let
+                        }
+                    }
+                }
+
+                val result = zzTalkReply(content.replace("@$botUsername", ""))
+                sendMessage(update.message.chatId.toString(), result)
+            }
+        }
+    }
+
+    private suspend fun privateMessageReply(update: Update) {
+        System.out.println("privateMessageReply: ${update.message}")
+        val result = zzTalkReply(update.message.text)
+        sendMessage(update.message.chatId.toString(), result)
+    }
+
+    private suspend fun zzTalkReply(origin: String): String {
+        return origin.replace("@functionzzbot", "")
+                .replace("你", "_Wo_")
+                .replace("我", "你")
+                .replace("_Wo_", "我")
+                .replace("吗", "")
+                .replace("吧", "")
+                .replace("？", "")
+                .replace("怎么样", "挺好的")
     }
 }
