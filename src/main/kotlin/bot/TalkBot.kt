@@ -1,6 +1,7 @@
 package bot
 
 import constants.BotConstants
+import extension.BotExtension.handleOrder
 import extension.BotExtension.sendMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -8,7 +9,6 @@ import kotlinx.coroutines.launch
 import order.TalkBotOrder
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
-import kotlin.random.Random
 
 class TalkBot : TelegramLongPollingBot() {
 
@@ -47,35 +47,18 @@ class TalkBot : TelegramLongPollingBot() {
         System.out.println("groupMessageReply: ${update.message}")
         update.message.text?.let { content ->
             if (content.contains("@$botUsername")) {
-                // /random@name
-                if (content.startsWith("/")) {
-                    orderSet.forEach {
-                        if (content.startsWith(it.value)) {
-                            when (it) {
-                                TalkBotOrder.RANDOM -> {
-                                    sendMessage(update.message.chatId.toString(),"random ${Random.nextInt(100)}")
-                                }
-
-                                TalkBotOrder.JOKE -> {
-                                    sendMessage(update.message.chatId.toString(),"还没编好")
-                                }
-                            }
-
-                            return@let
-                        }
-                    }
-                }
-
+                if (handleOrder(update)) return
                 val result = zzTalkReply(content.replace("@$botUsername", ""))
-                sendMessage(update.message.chatId.toString(), result)
+                sendMessage(update.message.chatId.toString(), result, update.message.messageId)
             }
         }
     }
 
+    // TODO private order
     private suspend fun privateMessageReply(update: Update) {
         System.out.println("privateMessageReply: ${update.message}")
         val result = zzTalkReply(update.message.text)
-        sendMessage(update.message.chatId.toString(), result)
+        sendMessage(update.message.chatId.toString(), result, update.message.messageId)
     }
 
     private suspend fun zzTalkReply(origin: String): String {
