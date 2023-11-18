@@ -6,13 +6,11 @@ import extension.BotExtension.sendMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import order.TalkBotOrder
+import kotlinx.coroutines.withContext
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
 
 class TalkBot : TelegramLongPollingBot() {
-
-    private val orderSet = TalkBotOrder.entries
 
     override fun getBotUsername(): String {
         return BotConstants.BOT_NAME
@@ -62,13 +60,14 @@ class TalkBot : TelegramLongPollingBot() {
     }
 
     private suspend fun zzTalkReply(origin: String): String {
-        return origin.replace("@functionzzbot", "")
-                .replace("你", "_Wo_")
-                .replace("我", "你")
-                .replace("_Wo_", "我")
-                .replace("吗", "")
-                .replace("吧", "")
-                .replace("？", "")
-                .replace("怎么样", "挺好的")
+        return withContext(Dispatchers.IO) {
+            var result = origin
+            remove.forEach { result = result.replace(it, "") }
+            exchange.forEach { result = result.replace(it.first, it.second) }
+            return@withContext result
+        }
     }
+
+    private val remove = arrayOf("@$botUsername", "吗", "吧", "啊")
+    private val exchange = arrayOf("你" to "我", "？" to "!", "怎么样" to "挺好的")
 }
